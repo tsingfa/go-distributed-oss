@@ -45,3 +45,7 @@ func (e *encoder) Flush() {
 	}
 	e.cache = []byte{}
 }
+
+func (e *encoder) Close() {
+
+}
