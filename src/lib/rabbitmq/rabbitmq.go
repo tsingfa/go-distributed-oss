@@ -1,3 +1,11 @@
+//消息队列的相关操作
+//New 新建消息队列
+//Bind 将消息队列与exchange绑定，所有发往exchange的消息会转发到本地消息队列
+//Send 往指定消息队列发送消息
+//Publish 往指定exchange发送消息
+//Consume 生成一个用于接收消息的channel，遍历该ch以获取来自本地队列的消息
+//Close 关闭消息队列
+
 package rabbitmq
 
 import (
@@ -12,18 +20,19 @@ type RabbitMQ struct {
 	exchange string
 }
 
+// New 创建RabbitMQ结构体指针
 func New(s string) *RabbitMQ {
-	conn, e := amqp.Dial(s)
-	if e != nil {
-		panic(e)
+	conn, err := amqp.Dial(s)
+	if err != nil {
+		panic(err)
 	}
 
-	ch, e := conn.Channel()
-	if e != nil {
-		panic(e)
+	ch, err := conn.Channel()
+	if err != nil {
+		panic(err)
 	}
 
-	q, e := ch.QueueDeclare(
+	q, err := ch.QueueDeclare(
 		"",    // name
 		false, // durable
 		true,  // delete when unused
@@ -31,8 +40,8 @@ func New(s string) *RabbitMQ {
 		false, // no-wait
 		nil,   // arguments
 	)
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
 
 	mq := new(RabbitMQ)
@@ -42,57 +51,61 @@ func New(s string) *RabbitMQ {
 	return mq
 }
 
+// Bind 将自己的消息队列与一个exchange绑定，
+// 所有发往该exchange的消息都可以在自己的消息队列中接收到。
 func (q *RabbitMQ) Bind(exchange string) {
-	e := q.channel.QueueBind(
+	err := q.channel.QueueBind(
 		q.Name,   // queue name
 		"",       // routing key
 		exchange, // exchange
 		false,
 		nil)
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
 	q.exchange = exchange
 }
 
+// Send 往指定消息队列发消息
 func (q *RabbitMQ) Send(queue string, body interface{}) {
-	str, e := json.Marshal(body)
-	if e != nil {
-		panic(e)
+	bytes, err := json.Marshal(body)
+	if err != nil {
+		panic(err)
 	}
-	e = q.channel.Publish("",
+	err = q.channel.Publish("",
 		queue,
 		false,
 		false,
 		amqp.Publishing{
 			ReplyTo: q.Name,
-			Body:    []byte(str),
+			Body:    bytes,
 		})
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
 }
 
+// Publish 往指定exchange发消息
 func (q *RabbitMQ) Publish(exchange string, body interface{}) {
-	str, e := json.Marshal(body)
-	if e != nil {
-		panic(e)
+	bytes, err := json.Marshal(body)
+	if err != nil {
+		panic(err)
 	}
-	e = q.channel.Publish(exchange,
+	err = q.channel.Publish(exchange,
 		"",
 		false,
 		false,
 		amqp.Publishing{
 			ReplyTo: q.Name,
-			Body:    []byte(str),
+			Body:    bytes,
 		})
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
 }
 
 func (q *RabbitMQ) Consume() <-chan amqp.Delivery {
-	c, e := q.channel.Consume(q.Name,
+	ch, err := q.channel.Consume(q.Name,
 		"",
 		true,
 		false,
@@ -100,13 +113,13 @@ func (q *RabbitMQ) Consume() <-chan amqp.Delivery {
 		false,
 		nil,
 	)
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
-	return c
+	return ch
 }
 
 func (q *RabbitMQ) Close() {
-	q.channel.Close()
-	q.conn.Close()
+	_ = q.channel.Close()
+	_ = q.conn.Close()
 }
