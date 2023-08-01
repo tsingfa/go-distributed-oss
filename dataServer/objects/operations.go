@@ -1,7 +1,4 @@
-//一些HTTP的操作函数
-//put、get操作
-
-//*os.File同时实现了io.Writer和io.Reader，可读可写。
+//接收并处理来自接口服务转发来的HTTP操作
 
 package objects
 
