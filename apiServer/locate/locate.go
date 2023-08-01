@@ -46,7 +46,7 @@ func Locate(name string) string {
 	return server
 }
 
-// Exist 指定的对象文件是否在各数据服务结点中存在
+// Exist 指定的对象文件在各数据服务结点中是否存在
 func Exist(name string) bool {
 	return Locate(name) != ""
 }

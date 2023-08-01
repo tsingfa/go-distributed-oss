@@ -18,7 +18,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	io.Copy(w, stream) //将读取到的数据复制到写入流writer
+	_, _ = io.Copy(w, stream) //将读取到的数据复制到写入流writer
 }
 
 // getStream 查找指定数据对象object，返回对其get请求的读取流reader。
