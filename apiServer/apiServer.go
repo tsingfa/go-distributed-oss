@@ -7,6 +7,7 @@ import (
 	"go-distributed-oss/apiServer/heartbeat"
 	"go-distributed-oss/apiServer/locate"
 	"go-distributed-oss/apiServer/objects"
+	"go-distributed-oss/apiServer/versions"
 
 	"log"
 	"net/http"
@@ -21,5 +22,6 @@ func main() {
 	})
 	http.HandleFunc("/objects/", objects.Handler)
 	http.HandleFunc("/locate/", locate.Handler)
+	http.HandleFunc("/versions/", versions.Handler)
 	log.Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
 }
