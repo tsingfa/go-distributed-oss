@@ -17,6 +17,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		get(w, r)
 		return
 	}
+	if m == http.MethodDelete {
+		del(w, r)
+		return
+	}
 	//找不到请求方式对应的处理函数 --> 请求方式不合规
 	w.WriteHeader(http.StatusMethodNotAllowed) //WriteHeader写HTTP响应的错误代码
 }
