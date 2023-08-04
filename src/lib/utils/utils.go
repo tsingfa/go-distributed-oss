@@ -22,17 +22,19 @@ func GetOffsetFromHeader(h http.Header) int64 {
 	return offset
 }
 
+// GetHashFromHeader 获取HTTP头部中的hash值(要求"SHA-256"格式)
 func GetHashFromHeader(h http.Header) string {
-	digest := h.Get("digest")
+	digest := h.Get("digest") //获取http头部的digest
 	if len(digest) < 9 {
 		return ""
-	}
+	} //digest的值形如SHA-256=example_hash
 	if digest[:8] != "SHA-256=" {
 		return ""
-	}
-	return digest[8:]
+	} //确保SHA-256格式，否则hash为空
+	return digest[8:] //返回hash内容
 }
 
+// GetSizeFromHeader 获取HTTP头部中的size大小(对应"content-length"字段)
 func GetSizeFromHeader(h http.Header) int64 {
 	size, _ := strconv.ParseInt(h.Get("content-length"), 0, 64)
 	return size

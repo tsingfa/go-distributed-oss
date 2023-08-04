@@ -13,7 +13,7 @@ import (
 func StartLocate() {
 	q := rabbitmq.New(os.Getenv("RABBITMQ_SERVER"))
 	defer q.Close()
-	q.Bind("dataServers")
+	q.Bind("dataServers") //分布式系统，各个节点之间的操作是“平行”的，所有节点都会执行这些操作
 	ch := q.Consume()
 	for msg := range ch { //遍历channel，接收（消费）来自dataServers的消息
 		object, err := strconv.Unquote(string(msg.Body))

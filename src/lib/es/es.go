@@ -3,7 +3,8 @@ package es
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -23,97 +24,114 @@ type hit struct {
 
 type searchResult struct {
 	Hits struct {
-		Total int
-		Hits  []hit
+		Total struct {
+			Value    int
+			Relation string
+		}
+		Hits []hit
 	}
 }
 
-func getMetadata(name string, versionId int) (meta Metadata, e error) {
-	url := fmt.Sprintf("http://%s/metadata/objects/%s_%d/_source",
-		os.Getenv("ES_SERVER"), name, versionId)
-	r, e := http.Get(url)
-	if e != nil {
+// getMetadata 根据对象的名字和版本号，获取指定版本的对象的元数据
+func getMetadata(name string, version int) (meta Metadata, err error) {
+	urlStr := fmt.Sprintf("http://%s/metadata/_doc/%s_%d/_source",
+		os.Getenv("ES_SERVER"), name, version) //索引为metadata,类型为objects,文档id由name和version拼接而成
+	resp, err := http.Get(urlStr) //向ES服务器请求，这里确切指定了name_version，不用再按条件搜索
+	if err != nil {
+		log.Println(err)
 		return
 	}
-	if r.StatusCode != http.StatusOK {
-		e = fmt.Errorf("fail to get %s_%d: %d", name, versionId, r.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("fail to get %s_%d from %s: %d", name, version, os.Getenv("ES_SERVER"), resp.StatusCode)
+		log.Println(err)
 		return
 	}
-	result, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(result, &meta)
+	result, _ := io.ReadAll(resp.Body)
+	_ = json.Unmarshal(result, &meta) //将json格式的result中的数据，解析到meta结构体中
 	return
 }
 
-func SearchLatestVersion(name string) (meta Metadata, e error) {
-	url := fmt.Sprintf("http://%s/metadata/_search?q=name:%s&size=1&sort=version:desc",
-		os.Getenv("ES_SERVER"), url.PathEscape(name))
-	r, e := http.Get(url)
-	if e != nil {
+// SearchLatestVersion 根据对象名，获取其最新版的元数据
+func SearchLatestVersion(name string) (meta Metadata, err error) {
+	urlStr := fmt.Sprintf("http://%s/metadata/_search?q=name:%s&size=1&sort=version:desc",
+		os.Getenv("ES_SERVER"), url.PathEscape(name)) //有name而没有version，需要调用ES的搜索API
+	resp, err := http.Get(urlStr)
+	if err != nil {
 		return
 	}
-	if r.StatusCode != http.StatusOK {
-		e = fmt.Errorf("fail to search latest metadata: %d", r.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("fail to search latest metadata: %d", resp.StatusCode)
 		return
 	}
-	result, _ := ioutil.ReadAll(r.Body)
-	var sr searchResult
-	json.Unmarshal(result, &sr)
+	result, _ := io.ReadAll(resp.Body)
+	var sr searchResult //适配搜索结果的结构体
+	_ = json.Unmarshal(result, &sr)
 	if len(sr.Hits.Hits) != 0 {
-		meta = sr.Hits.Hits[0].Source
+		meta = sr.Hits.Hits[0].Source //如果有搜索到，返回降序结果的第一条
 	}
 	return
 }
 
+// GetMetadata 根据对象名和版本号，返回指定版本的元数据。
+// 如果未指定版本号（为0），则返回最新版。
 func GetMetadata(name string, version int) (Metadata, error) {
-	if version == 0 {
+	if version == 0 { //若没有指定版本（为0），则获取最新版
 		return SearchLatestVersion(name)
 	}
 	return getMetadata(name, version)
 }
 
+// PutMetadata 向ES服务器上传一个新的元数据
 func PutMetadata(name string, version int, size int64, hash string) error {
 	doc := fmt.Sprintf(`{"name":"%s","version":%d,"size":%d,"hash":"%s"}`,
 		name, version, size, hash)
 	client := http.Client{}
-	url := fmt.Sprintf("http://%s/metadata/objects/%s_%d?op_type=create",
+	urlStr := fmt.Sprintf("http://%s/metadata/_doc/%s_%d?op_type=create",
 		os.Getenv("ES_SERVER"), name, version)
-	request, _ := http.NewRequest("PUT", url, strings.NewReader(doc))
-	r, e := client.Do(request)
-	if e != nil {
-		return e
+	request, _ := http.NewRequest("PUT", urlStr, strings.NewReader(doc))
+	request.Header.Set("Content-Type", "application/json") // 添加Content-Type头部
+	resp, err := client.Do(request)
+	//log.Println("resp:\n", resp)
+	if err != nil {
+		log.Println("ES PutMetadata error:", err)
+		return err
 	}
-	if r.StatusCode == http.StatusConflict {
-		return PutMetadata(name, version+1, size, hash)
+	if resp.StatusCode == http.StatusConflict { //如果同时有多个客户端上传同一个元数据（文档id相冲突）
+		return PutMetadata(name, version+1, size, hash) //则第一个客户端会成功，而失败的版本+1后重试，直至都不冲突
 	}
-	if r.StatusCode != http.StatusCreated {
-		result, _ := ioutil.ReadAll(r.Body)
-		return fmt.Errorf("fail to put metadata: %d %s", r.StatusCode, string(result))
+	if resp.StatusCode != http.StatusCreated {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("fail to put metadata: %d %s", resp.StatusCode, string(result))
 	}
 	return nil
 }
 
+// AddVersion 令指定对象的最新版本记录+1
 func AddVersion(name, hash string, size int64) error {
-	version, e := SearchLatestVersion(name)
-	if e != nil {
-		return e
+	version, err := SearchLatestVersion(name)
+	//log.Println("version:", version)
+	if err != nil {
+		return err
 	}
 	return PutMetadata(name, version.Version+1, size, hash)
 }
 
+// SearchAllVersions 搜索某个对象或所有对象的全部版本，返回元数据数组。
+// from和size参数指定分页的显示结果。
 func SearchAllVersions(name string, from, size int) ([]Metadata, error) {
-	url := fmt.Sprintf("http://%s/metadata/_search?sort=name,version&from=%d&size=%d",
+	urlStr := fmt.Sprintf("http://%s/metadata/_search?sort=name,version&from=%d&size=%d",
 		os.Getenv("ES_SERVER"), from, size)
-	if name != "" {
-		url += "&q=name:" + name
+	if name != "" { //name不为空，即有指定的对象，增加查询条件
+		urlStr += "&q=name:" + name
 	}
-	r, e := http.Get(url)
-	if e != nil {
-		return nil, e
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		return nil, err
 	}
 	metas := make([]Metadata, 0)
-	result, _ := ioutil.ReadAll(r.Body)
+	result, _ := io.ReadAll(resp.Body)
 	var sr searchResult
-	json.Unmarshal(result, &sr)
+	_ = json.Unmarshal(result, &sr)
 	for i := range sr.Hits.Hits {
 		metas = append(metas, sr.Hits.Hits[i].Source)
 	}
@@ -122,31 +140,31 @@ func SearchAllVersions(name string, from, size int) ([]Metadata, error) {
 
 func DelMetadata(name string, version int) {
 	client := http.Client{}
-	url := fmt.Sprintf("http://%s/metadata/objects/%s_%d",
+	urlStr := fmt.Sprintf("http://%s/metadata/_doc/%s_%d",
 		os.Getenv("ES_SERVER"), name, version)
-	request, _ := http.NewRequest("DELETE", url, nil)
-	client.Do(request)
+	request, _ := http.NewRequest("DELETE", urlStr, nil)
+	_, _ = client.Do(request)
 }
 
 type Bucket struct {
-	Key         string
-	Doc_count   int
-	Min_version struct {
+	Key        string
+	DocCount   int
+	MinVersion struct {
 		Value float32
 	}
 }
 
 type aggregateResult struct {
 	Aggregations struct {
-		Group_by_name struct {
+		GroupByName struct {
 			Buckets []Bucket
 		}
 	}
 }
 
-func SearchVersionStatus(min_doc_count int) ([]Bucket, error) {
+func SearchVersionStatus(minDocCount int) ([]Bucket, error) {
 	client := http.Client{}
-	url := fmt.Sprintf("http://%s/metadata/_search", os.Getenv("ES_SERVER"))
+	urlStr := fmt.Sprintf("http://%s/metadata/_search", os.Getenv("ES_SERVER"))
 	body := fmt.Sprintf(`
         {
           "size": 0,
@@ -165,34 +183,35 @@ func SearchVersionStatus(min_doc_count int) ([]Bucket, error) {
               }
             }
           }
-        }`, min_doc_count)
-	request, _ := http.NewRequest("GET", url, strings.NewReader(body))
-	r, e := client.Do(request)
-	if e != nil {
-		return nil, e
+        }`, minDocCount)
+	req, _ := http.NewRequest("GET", urlStr, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json") // 添加Content-Type头部
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(resp.Body)
 	var ar aggregateResult
-	json.Unmarshal(b, &ar)
-	return ar.Aggregations.Group_by_name.Buckets, nil
+	_ = json.Unmarshal(b, &ar)
+	return ar.Aggregations.GroupByName.Buckets, nil
 }
 
 func HasHash(hash string) (bool, error) {
-	url := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=0", os.Getenv("ES_SERVER"), hash)
-	r, e := http.Get(url)
+	urlStr := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=0", os.Getenv("ES_SERVER"), hash)
+	r, e := http.Get(urlStr)
 	if e != nil {
 		return false, e
 	}
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	var sr searchResult
-	json.Unmarshal(b, &sr)
-	return sr.Hits.Total != 0, nil
+	_ = json.Unmarshal(b, &sr)
+	return sr.Hits.Total.Value != 0, nil
 }
 
 func SearchHashSize(hash string) (size int64, e error) {
-	url := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=1",
+	urlStr := fmt.Sprintf("http://%s/metadata/_search?q=hash:%s&size=1",
 		os.Getenv("ES_SERVER"), hash)
-	r, e := http.Get(url)
+	r, e := http.Get(urlStr)
 	if e != nil {
 		return
 	}
@@ -200,9 +219,9 @@ func SearchHashSize(hash string) (size int64, e error) {
 		e = fmt.Errorf("fail to search hash size: %d", r.StatusCode)
 		return
 	}
-	result, _ := ioutil.ReadAll(r.Body)
+	result, _ := io.ReadAll(r.Body)
 	var sr searchResult
-	json.Unmarshal(result, &sr)
+	_ = json.Unmarshal(result, &sr)
 	if len(sr.Hits.Hits) != 0 {
 		size = sr.Hits.Hits[0].Source.Size
 	}
