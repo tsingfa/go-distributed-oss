@@ -5,6 +5,7 @@ import (
 	"go-distributed-oss/dataServer/heartbeat"
 	"go-distributed-oss/dataServer/locate"
 	"go-distributed-oss/dataServer/objects"
+	"go-distributed-oss/dataServer/temp"
 	"log"
 	"net/http"
 	"os"
@@ -18,5 +19,6 @@ func main() {
 		_, _ = fmt.Fprintf(w, "dataServer:"+os.Getenv("LISTEN_ADDRESS")+" is connected...\n") //测试路由
 	})
 	http.HandleFunc("/objects/", objects.Handler)
+	http.HandleFunc("/temp/", temp.Handler)
 	log.Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
 }

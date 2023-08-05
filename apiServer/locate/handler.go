@@ -14,8 +14,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	object := strings.Split(r.URL.EscapedPath(), "/")[2]
-	dataServer := Locate(object) //定位对象资源所在的数据结点
+	object := strings.Split(r.URL.EscapedPath(), "/")[2] //增加元数据功能后，改为用哈希值做locate
+	dataServer := Locate(object)                         //定位对象资源所在的数据结点
 	if len(dataServer) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return

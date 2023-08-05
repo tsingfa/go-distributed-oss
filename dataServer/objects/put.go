@@ -2,13 +2,9 @@
 
 package objects
 
-import (
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"strings"
-)
+/*
+//实现数据校验功能后，上传都是使用temp接口的put进行缓存转正来实现
+//此处的put不再使用
 
 // put 上传（更新）文件的操作函数
 func put(w http.ResponseWriter, r *http.Request) {
@@ -34,26 +30,4 @@ func put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-// get 下载文件的操作函数
-func get(w http.ResponseWriter, r *http.Request) {
-	//1.打开文件
-	file, err := os.Open(os.Getenv("STORAGE_ROOT") + "/objects/" + strings.Split(r.URL.EscapedPath(), "/")[2])
-	if err != nil { //文件打开失败 --> 找不到该文件
-		log.Println(err)
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	defer func(file *os.File) {
-		err := file.Close() //文件打开成功，记得关闭
-		if err != nil {
-			log.Println(err)
-		}
-	}(file)
-	//2.写回客户端
-	_, err = io.Copy(w, file) //读取服务器中的文件，从输出流写回给客户端
-	if err != nil {
-		log.Println(err)
-		return
-	}
-}
+*/

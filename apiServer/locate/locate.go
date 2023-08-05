@@ -7,10 +7,11 @@ import (
 	"time"
 )
 
-// Locate 指定对象文件名，查找并返回所在的数据结点地址
-func Locate(name string) string {
+// Locate 指定对象文件名，查找并返回所在的数据结点地址。
+// 在新增元数据功能后，改用哈希值定位（关联到数据服务的Locate函数）。
+func Locate(object string) string {
 	q := rabbitmq.New(os.Getenv("RABBITMQ_SERVER"))
-	q.Publish("dataServers", name) //消息队列作为接口服务与数据服务之间的桥梁
+	q.Publish("dataServers", object) //消息队列作为接口服务与数据服务之间的桥梁
 	ch := q.Consume()
 	go func() { //临时消息队列（超时1s关闭）
 		time.Sleep(time.Second)

@@ -7,10 +7,14 @@ import "net/http"
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	m := r.Method
-	if m == http.MethodPut {
-		put(w, r)
-		return
-	}
+	/*
+		//实现数据校验功能后，上传都是使用temp接口的put进行缓存转正来实现
+		//此处的put不再使用
+			if m == http.MethodPut {
+				put(w, r)
+				return
+			}
+	*/
 	if m == http.MethodGet {
 		get(w, r)
 		return
