@@ -40,8 +40,9 @@ func GetSizeFromHeader(h http.Header) int64 {
 	return size
 }
 
+// CalculateHash 计算对象内容哈希值的Base64编码
 func CalculateHash(r io.Reader) string {
-	h := sha256.New()
-	io.Copy(h, r)
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+	h := sha256.New()                                    //sha256.digest结构体变量，内含以sha256为哈希函数的io.Writer
+	_, _ = io.Copy(h, r)                                 //对writer的写入，会以哈希形式保存，Sum()方法可读取该哈希值
+	return base64.StdEncoding.EncodeToString(h.Sum(nil)) //将哈希值编码为base64
 }
