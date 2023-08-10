@@ -59,12 +59,39 @@ func GetDataServers() []string {
 	return ds
 }
 
-// ChooseRandomDataServer 返回随机选择的数据服务结点
-func ChooseRandomDataServer() string {
-	ds := GetDataServers()
-	n := len(ds)
-	if n == 0 {
-		return "" //没有数据服务结点
+// ChooseRandomDataServer 返回随机选择的数据服务结点（指定数量的选择结果）
+//
+// feat: 原先为随机返回一个数据节点用于存储对象文件，现新增分片及RS冗余纠错功能，
+// 需要一次性随机返回若干个数据节点（用于存储数据分片和纠错分片）。
+//
+// exclude map 用于记录本次随机选择过程中要排除的数据节点名单，若没有排除则为nil。
+// 【作用】：对原函数的一种复用，通过排除节点的方式，进一步划定选择范围。
+//
+// 【排除数据节点的场景】：当定位完成后（知道哪些节点有分片数据），而实际收到的分片可能并不足，此时需要进行数据修复，
+// 根据已有的分片，将丢失的分片复原出来并再次上传到对应的数据节点【所以此时不再随机，而相当于要指定某些节点】
+// 通过跳过正常节点的方式，挑选出异常节点，上传复原分片。
+func ChooseRandomDataServer(n int, exclude map[int]string) (res []string) {
+	candidates := make([]string, 0) //从所有节点中，过滤掉排除名单，留下候选名单
+	reverseExcludeMap := make(map[string]int)
+	for id, addr := range exclude { //排除名单（键值转换，方便查找）
+		reverseExcludeMap[addr] = id
 	}
-	return ds[rand.Intn(n)] //随机[0,n)整数，指定数据节点
+	servers := GetDataServers() //所有数据节点（地址）的列表
+	for i := range servers {
+		s := servers[i]
+		_, excluded := reverseExcludeMap[s] //节点是否在排除名单内
+		if !excluded {                      //若未被排除
+			candidates = append(candidates, s)
+		}
+	}
+	length := len(candidates)
+	if length < n { //候选节点数量不足
+		log.Printf("insufficient number of candidate servers,expect %d but found %d.\n", n, length)
+		return nil
+	}
+	seq := rand.Perm(length) //[0,length-1]的所有整数组成的乱序序列
+	for i := 0; i < n; i++ { //取出前n个
+		res = append(res, candidates[seq[i]])
+	}
+	return res
 }

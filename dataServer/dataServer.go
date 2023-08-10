@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	locate.CollectObjects()       //初始化对象文件的缓存列表
 	go heartbeat.StartHeartbeat() //心跳服务：由接口服务监控数据服务节点的心跳
 	go locate.StartLocate()       //定位服务：定位资源所属的数据节点位置
 	//路由管理

@@ -13,6 +13,11 @@ type TempPutStream struct {
 	Uuid   string
 }
 
+// NewTempPutStream 返回一个TempPutStream结构体指针（实际是io.Writer）
+// 即指定好server、对象hash和size，返回一个写入流（内部带有分配给该对象的uuid）
+//
+// "POST", "http://"+server+"/temp/"+hash，请求给临时对象（分片）分配uuid
+// 注意：在实现RS分片功能时，传入的hash参数为 "文件对象hash.分片id"
 func NewTempPutStream(server, hash string, size int64) (*TempPutStream, error) {
 	request, err := http.NewRequest("POST", "http://"+server+"/temp/"+hash, nil) //请求获得uuid
 	if err != nil {
@@ -32,6 +37,9 @@ func NewTempPutStream(server, hash string, size int64) (*TempPutStream, error) {
 }
 
 // Write 根据server和uuid，以PATCH方法访问数据服务的temp接口，将需要的数据上传至缓存区，返回上传的字节长度。
+//
+// "PATCH", "http://"+w.Server+"/temp/"+w.Uuid
+// 请求正文会被写入`"http://"+w.Server+"/temp/"+w.Uuid`.dat文件中
 func (w *TempPutStream) Write(p []byte) (int, error) {
 	request, err := http.NewRequest("PATCH", "http://"+w.Server+"/temp/"+w.Uuid, strings.NewReader(string(p)))
 	if err != nil {
@@ -49,9 +57,9 @@ func (w *TempPutStream) Write(p []byte) (int, error) {
 }
 
 // Commit 决定是否提交缓存
-func (w *TempPutStream) Commit(good bool) {
+func (w *TempPutStream) Commit(success bool) {
 	method := "DELETE"
-	if good {
+	if success {
 		method = "PUT"
 	}
 	request, _ := http.NewRequest(method, "http://"+w.Server+"/temp/"+w.Uuid, nil)

@@ -4,14 +4,16 @@ package locate
 
 import (
 	"go-distributed-oss/src/lib/rabbitmq"
+	"go-distributed-oss/src/lib/types"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
-var objects = make(map[string]int) //检查对象是否存在磁盘（维护一个缓存中的表，而不用实际读盘）
+var objects = make(map[string]int) //定位缓存--检查对象是否存在磁盘（维护一个缓存中的表，而不用实际读盘）
 var mutex sync.Mutex               //用于保护表的读写
 
 // StartLocate 用于监听定位请求（由dataServers消息队列指定要定位的对象）
@@ -26,8 +28,12 @@ func StartLocate() {
 			log.Println(err)
 			panic(err)
 		}
-		if Locate(hash) { //如果该hash能被定位到
-			q.Send(msg.ReplyTo, os.Getenv("LISTEN_ADDRESS")) //将数据对象所在的数据结点地址，返回给指定地址（临时消息队列）
+		id := Locate(hash) //查询该对象在本节点所分到的分片id
+		if id != -1 {      //查得到
+			q.Send(msg.ReplyTo, types.LocateMessage{
+				Addr: os.Getenv("LISTEN_ADDRESS"),
+				Id:   id,
+			}) //将数据对象所在的数据结点地址（以及分片id），返回给指定地址（临时消息队列）
 		}
 	}
 }
@@ -41,17 +47,21 @@ func Locate(object string) bool {
 */
 
 // Locate 检查指定hash的文件是否在缓存map中（以内存代替磁盘检查）
-func Locate(hash string) bool {
-	mutex.Lock() //互斥锁保护对objects的读写操作
-	_, ok := objects[hash]
+// feat: 实现RS分片后，不仅要检查是否在map中，还要知道该分片为几号分片
+func Locate(hash string) int {
+	mutex.Lock()            //互斥锁保护对objects的读写操作
+	id, ok := objects[hash] //对象hash--分片id
 	mutex.Unlock()
-	return ok
+	if !ok { //如果没找到
+		return -1
+	}
+	return id //几号分片
 }
 
-// Add 将hash加入缓存记录
-func Add(hash string) {
+// Add 将分片hash加入缓存记录，并记录分片id
+func Add(hash string, id int) {
 	mutex.Lock()
-	objects[hash] = 1
+	objects[hash] = id
 	mutex.Unlock()
 }
 
@@ -62,11 +72,24 @@ func Del(hash string) {
 	mutex.Unlock()
 }
 
-// CollectObjects 初始化缓存列表，记录该节点/objects/目录下所有的文件。
+// CollectObjects 初始化定位缓存，记录该节点/objects/目录下所有的文件，而不用再读磁盘IO。
+//
+// feat: 不仅要知道该对象（分片）在磁盘中，还要知道该分片是第几块分片（分片id）。
+// 分片文件名：<对象hash.id.分片hash>; 借助该列表，可由文件对象的hash得出分片id
 func CollectObjects() {
 	files, _ := filepath.Glob(os.Getenv("STORAGE_ROOT") + "/objects/*")
-	for idx := range files {
-		hash := filepath.Base(files[idx]) //获取基本文件名（本身就以hash值命名）
-		objects[hash] = 1
+	for i := range files {
+		filenameSplit := strings.Split(filepath.Base(files[i]), ".") //拆分分片文件名
+		if len(filenameSplit) != 3 {
+			log.Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
+			panic(files[i])
+		}
+		hash := filenameSplit[0] //对象hash
+		id, err := strconv.Atoi(filenameSplit[1])
+		if err != nil {
+			log.Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
+			panic(err)
+		}
+		objects[hash] = id //对象hash--分片id（一个对象在一个节点下仅有一个分片，故可一一对应）
 	}
 }

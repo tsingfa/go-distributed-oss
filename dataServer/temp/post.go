@@ -1,4 +1,4 @@
-//"POST", "http://"+server+"/temp/"+hash,请求获得uuid
+//"POST", "http://"+server+"/temp/"+hash,获得一个带有uuid的写入流
 
 package temp
 
@@ -12,15 +12,24 @@ import (
 	"strings"
 )
 
+//用于存储临时文件信息的文件 "POST", "http://"+server+"/temp/"+hash
+//os.Getenv("STORAGE_ROOT") + "/temp/" + t.Uuid
+
+//用于存储临时对象的.dat文件 "PATCH", "http://"+w.Server+"/temp/"+w.Uuid
+//os.Getenv("STORAGE_ROOT") + "/temp/" + t.Uuid + ".dat"
+
+//临时对象转正的命名 "PUT"/"DELETE", "http://"+w.Server+"/temp/"+w.Uuid
+//os.Getenv("STORAGE_ROOT")+"/objects/"+tempinfo.Name
+
 type tempInfo struct {
 	Uuid string
-	Name string
+	Name string //用于临时文件转正时的重命名，具体查看对应NewXXXStream的中的hash参数
 	Size int64
 }
 
 func post(w http.ResponseWriter, r *http.Request) {
 	output, _ := exec.Command("uuidgen").Output()
-	uuid := strings.TrimSuffix(string(output), "\n")
+	uuid := strings.TrimSuffix(string(output), "\n") //生成一个uuid并做格式处理
 	hash := strings.Split(r.URL.EscapedPath(), "/")[2]
 	size, err := strconv.ParseInt(r.Header.Get("size"), 0, 64)
 	if err != nil {
@@ -30,7 +39,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 	}
 	t := tempInfo{
 		Uuid: uuid,
-		Name: hash, //文件对象的哈希，此处用于临时文件命名
+		Name: hash, //文件对象的哈希，此处用于临时文件命名（实现分片后为"hash.id"）
 		Size: size,
 	}
 	err = t.writeToFile()

@@ -29,7 +29,7 @@ func NewRSResumablePutStream(dataServers []string, name, hash string, size int64
 	if e != nil {
 		return nil, e
 	}
-	uuids := make([]string, ALL_SHARDS)
+	uuids := make([]string, AllShards)
 	for i := range uuids {
 		uuids[i] = putStream.writers[i].(*objectstream.TempPutStream).Uuid
 	}
@@ -49,7 +49,7 @@ func NewRSResumablePutStreamFromToken(token string) (*RSResumablePutStream, erro
 		return nil, e
 	}
 
-	writers := make([]io.Writer, ALL_SHARDS)
+	writers := make([]io.Writer, AllShards)
 	for i := range writers {
 		writers[i] = &objectstream.TempPutStream{t.Servers[i], t.Uuids[i]}
 	}
@@ -72,7 +72,7 @@ func (s *RSResumablePutStream) CurrentSize() int64 {
 		log.Println(r.StatusCode)
 		return -1
 	}
-	size := utils.GetSizeFromHeader(r.Header) * DATA_SHARDS
+	size := utils.GetSizeFromHeader(r.Header) * DataShards
 	if size > s.Size {
 		size = s.Size
 	}

@@ -8,7 +8,7 @@ import (
 	"go-distributed-oss/apiServer/heartbeat"
 	"go-distributed-oss/apiServer/locate"
 	"go-distributed-oss/src/lib/es"
-	"go-distributed-oss/src/lib/objectstream"
+	"go-distributed-oss/src/lib/rs"
 	"go-distributed-oss/src/lib/utils"
 	"io"
 	"log"
@@ -68,11 +68,13 @@ func storeObject(r io.Reader, hash string, size int64) (int, error) {
 
 // putStream 随机指定一个数据服务结点，为该结点以及指定数据对象的put请求构建写入流。
 // 返回的TempPutStream结构体，支持数据服务的缓存功能（转正、删除）
-func putStream(hash string, size int64) (*objectstream.TempPutStream, error) {
-	server := heartbeat.ChooseRandomDataServer() //随机选数据服务结点
-	log.Println("choose server:", server)
-	if server == "" {
-		return nil, fmt.Errorf("cannot find any dataServer")
+//
+// feat: 随机选择【一组】数据节点构建写入流，写入分片文件。
+func putStream(hash string, size int64) (*rs.RSPutStream, error) {
+	servers := heartbeat.ChooseRandomDataServer(rs.AllShards, nil) //随机选择的数据服务结点结果
+	log.Println("choose servers:", servers)
+	if len(servers) != rs.AllShards {
+		return nil, fmt.Errorf("cannot find enough dataServer")
 	}
-	return objectstream.NewTempPutStream(server, hash, size)
+	return rs.NewRSPutStream(servers, hash, size)
 }

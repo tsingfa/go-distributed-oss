@@ -11,8 +11,8 @@ import (
 )
 
 func testEncodeDecode(t *testing.T, p []byte) {
-	writers := make([]io.Writer, ALL_SHARDS)
-	readers := make([]io.Reader, ALL_SHARDS)
+	writers := make([]io.Writer, AllShards)
+	readers := make([]io.Reader, AllShards)
 	for i := range writers {
 		writers[i], _ = os.Create(fmt.Sprintf("/tmp/ut_%d", i))
 	}
