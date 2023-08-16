@@ -4,7 +4,7 @@ package temp
 
 import (
 	"encoding/json"
-	"log"
+	"go-distributed-oss/src/lib/mylogger"
 	"net/http"
 	"os"
 	"os/exec"
@@ -33,7 +33,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 	hash := strings.Split(r.URL.EscapedPath(), "/")[2]
 	size, err := strconv.ParseInt(r.Header.Get("size"), 0, 64)
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -44,7 +44,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 	}
 	err = t.writeToFile()
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

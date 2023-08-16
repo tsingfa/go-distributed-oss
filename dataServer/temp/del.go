@@ -14,6 +14,6 @@ func del(w http.ResponseWriter, r *http.Request) {
 	infoFile := os.Getenv("STORAGE_ROOT") + "/temp/" + uuid
 	datFile := infoFile + ".dat"
 	//清除临时文件
-	os.Remove(infoFile)
-	os.Remove(datFile)
+	_ = os.Remove(infoFile)
+	_ = os.Remove(datFile)
 }

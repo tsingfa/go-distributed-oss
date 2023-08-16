@@ -5,8 +5,8 @@ package temp
 
 import (
 	"encoding/json"
+	"go-distributed-oss/src/lib/mylogger"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -16,7 +16,7 @@ func patch(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.Split(r.URL.EscapedPath(), "/")[2]
 	tempinfo, err := readFromFile(uuid) //获取uuid以及临时文件信息
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -24,7 +24,7 @@ func patch(w http.ResponseWriter, r *http.Request) {
 	datFile := infoFile + ".dat"
 	file, err := os.OpenFile(datFile, os.O_WRONLY|os.O_APPEND, 0)
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -33,21 +33,21 @@ func patch(w http.ResponseWriter, r *http.Request) {
 	}(file)
 	_, err = io.Copy(file, r.Body) //将请求正文写入dat文件中
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	info, err := file.Stat() //获取dat的文件信息
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	actual := info.Size()       //实际写入的dat文件大小
 	if actual > tempinfo.Size { //实际写入大小与预期不符-->文件有误（删除）
-		os.Remove(datFile)
-		os.Remove(infoFile)
-		log.Println("actual size", actual, "exceeds", tempinfo.Size)
+		_ = os.Remove(datFile)
+		_ = os.Remove(infoFile)
+		mylogger.L().Println("actual size", actual, "exceeds", tempinfo.Size)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

@@ -5,7 +5,7 @@ package main
 import (
 	"fmt"
 	"go-distributed-oss/apiServer/objects"
-	"log"
+	"go-distributed-oss/src/lib/mylogger"
 	"net/http"
 	"os"
 )
@@ -19,5 +19,5 @@ func main() {
 		_, _ = fmt.Fprintf(w, "pong") //测试路由
 	})
 	http.HandleFunc("/objects/", objects.Handler)
-	log.Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
+	mylogger.L().Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
 }

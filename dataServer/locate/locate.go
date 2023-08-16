@@ -3,9 +3,9 @@
 package locate
 
 import (
+	"go-distributed-oss/src/lib/mylogger"
 	"go-distributed-oss/src/lib/rabbitmq"
 	"go-distributed-oss/src/lib/types"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,7 +25,7 @@ func StartLocate() {
 	for msg := range ch { //遍历channel，接收（消费）来自dataServers exchange的消息
 		hash, err := strconv.Unquote(string(msg.Body)) //新增元数据功能后，改用hash定位
 		if err != nil {
-			log.Println(err)
+			mylogger.L().Println(err)
 			panic(err)
 		}
 		id := Locate(hash) //查询该对象在本节点所分到的分片id
@@ -81,13 +81,13 @@ func CollectObjects() {
 	for i := range files {
 		filenameSplit := strings.Split(filepath.Base(files[i]), ".") //拆分分片文件名
 		if len(filenameSplit) != 3 {
-			log.Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
+			mylogger.L().Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
 			panic(files[i])
 		}
 		hash := filenameSplit[0] //对象hash
 		id, err := strconv.Atoi(filenameSplit[1])
 		if err != nil {
-			log.Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
+			mylogger.L().Printf("The RS shard file '%s' is named incorrectly.\n", files[i])
 			panic(err)
 		}
 		objects[hash] = id //对象hash--分片id（一个对象在一个节点下仅有一个分片，故可一一对应）

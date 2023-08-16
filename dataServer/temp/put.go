@@ -5,8 +5,8 @@ package temp
 
 import (
 	"go-distributed-oss/dataServer/locate"
+	"go-distributed-oss/src/lib/mylogger"
 	"go-distributed-oss/src/lib/utils"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,7 +18,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.Split(r.URL.EscapedPath(), "/")[2]
 	tempinfo, err := readFromFile(uuid) //获取uuid以及临时文件信息
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -26,7 +26,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 	datFile := infoFile + ".dat"
 	file, err := os.Open(datFile)
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -35,15 +35,15 @@ func put(w http.ResponseWriter, r *http.Request) {
 	}(file)
 	info, err := file.Stat()
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	actual := info.Size()
-	os.Remove(infoFile)
+	_ = os.Remove(infoFile)
 	if actual != tempinfo.Size { //传输的文件大小与渔区不符
-		os.Remove(datFile)
-		log.Println("actual size mismatch,expect:", tempinfo.Size, ",but actual:", actual)
+		_ = os.Remove(datFile)
+		mylogger.L().Println("actual size mismatch,expect:", tempinfo.Size, ",but actual:", actual)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -54,9 +54,9 @@ func put(w http.ResponseWriter, r *http.Request) {
 func commitTempObject(datFile string, tempinfo *tempInfo) {
 	file, _ := os.Open(datFile)
 	d := url.PathEscape(utils.CalculateHash(file)) //得到分片hash
-	file.Close()
-	os.Rename(datFile, os.Getenv("STORAGE_ROOT")+"/objects/"+tempinfo.Name+"."+d) //重命名为："对象hash.分片id.分片hash"
-	locate.Add(tempinfo.hash(), tempinfo.id())                                    //加入定位缓存（对象hash--分片id）
+	_ = file.Close()
+	_ = os.Rename(datFile, os.Getenv("STORAGE_ROOT")+"/objects/"+tempinfo.Name+"."+d) //重命名为："对象hash.分片id.分片hash"
+	locate.Add(tempinfo.hash(), tempinfo.id())                                        //加入定位缓存（对象hash--分片id）
 }
 
 // hash 获取对象hash

@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// GetOffsetFromHeader 获取HTTP头部中的偏置起点（对应"range"头部）
+//
+// 格式要求：range: "bytes=first-xxx"，结果返回first。
 func GetOffsetFromHeader(h http.Header) int64 {
 	byteRange := h.Get("range")
 	if len(byteRange) < 7 {
@@ -22,7 +25,7 @@ func GetOffsetFromHeader(h http.Header) int64 {
 	return offset
 }
 
-// GetHashFromHeader 获取HTTP头部中的hash值(要求"SHA-256"格式)
+// GetHashFromHeader 获取HTTP头部中的hash值(对应"digest"头部，要求"SHA-256"格式)
 func GetHashFromHeader(h http.Header) string {
 	digest := h.Get("digest") //获取http头部的digest
 	if len(digest) < 9 {
@@ -34,7 +37,7 @@ func GetHashFromHeader(h http.Header) string {
 	return digest[8:] //返回hash内容
 }
 
-// GetSizeFromHeader 获取HTTP头部中的size大小(对应"content-length"字段)
+// GetSizeFromHeader 获取HTTP头部中的对象size(对应"content-length"头部)
 func GetSizeFromHeader(h http.Header) int64 {
 	size, _ := strconv.ParseInt(h.Get("content-length"), 0, 64)
 	return size

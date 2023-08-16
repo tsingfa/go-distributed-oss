@@ -3,6 +3,7 @@
 package heartbeat
 
 import (
+	"go-distributed-oss/src/lib/mylogger"
 	"go-distributed-oss/src/lib/rabbitmq"
 	"log"
 	"math/rand"
@@ -64,6 +65,8 @@ func GetDataServers() []string {
 // feat: 原先为随机返回一个数据节点用于存储对象文件，现新增分片及RS冗余纠错功能，
 // 需要一次性随机返回若干个数据节点（用于存储数据分片和纠错分片）。
 //
+// n int 指定随机数据节点数量。
+//
 // exclude map 用于记录本次随机选择过程中要排除的数据节点名单，若没有排除则为nil。
 // 【作用】：对原函数的一种复用，通过排除节点的方式，进一步划定选择范围。
 //
@@ -86,7 +89,7 @@ func ChooseRandomDataServer(n int, exclude map[int]string) (res []string) {
 	}
 	length := len(candidates)
 	if length < n { //候选节点数量不足
-		log.Printf("insufficient number of candidate servers,expect %d but found %d.\n", n, length)
+		mylogger.L().Printf("insufficient number of candidate servers,expect %d but found %d.\n", n, length)
 		return nil
 	}
 	seq := rand.Perm(length) //[0,length-1]的所有整数组成的乱序序列

@@ -9,6 +9,10 @@ import (
 // r (*http.Request)代表当前处理的HTTP请求。
 func Handler(w http.ResponseWriter, r *http.Request) {
 	m := r.Method //根据具体的请求方式，选择对应的处理函数
+	if m == http.MethodPost {
+		post(w, r)
+		return
+	}
 	if m == http.MethodPut {
 		put(w, r)
 		return

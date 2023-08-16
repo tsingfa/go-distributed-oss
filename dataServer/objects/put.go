@@ -13,20 +13,20 @@ func put(w http.ResponseWriter, r *http.Request) {
 	//"/objects/<object_name>" --> ["", "objects", "<object_name>"] --> "object_name"
 	file, err := os.Create(os.Getenv("STORAGE_ROOT") + "/objects/" + strings.Split(r.URL.EscapedPath(), "/")[2])
 	if err != nil { //文件创建失败
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer func(file *os.File) {
 		err := file.Close() //如果文件创建成功，记得延迟关闭
 		if err != nil {
-			log.Println(err)
+			mylogger.L().Println(err)
 		}
 	}(file)
 	//2.拷贝文件内容
 	_, err = io.Copy(file, r.Body) //读取r.Body，写入到服务器中的file
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		return
 	}
 }

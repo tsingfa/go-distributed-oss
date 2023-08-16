@@ -61,21 +61,24 @@ func (s *RSGetStream) Close() {
 	}
 }
 
+// Seek 用于调整读取流中的位置，以便能够从指定位置开始读取数据
 func (s *RSGetStream) Seek(offset int64, whence int) (int64, error) {
-	if whence != io.SeekCurrent {
+	if whence != io.SeekCurrent { //只能从当前位置起跳
 		panic("only support SeekCurrent")
 	}
-	if offset < 0 {
+	if offset < 0 { //跳过的字节数不能为负
 		panic("only support forward seek")
 	}
 	for offset != 0 {
+		//如果offset小于BlockSize，则直接读取offset即可
+		//如果offset大于BlockSize，则每轮往后读BlockSize长度，直至读到offset
 		length := int64(BlockSize)
 		if offset < length {
 			length = offset
 		}
 		buf := make([]byte, length)
-		_, _ = io.ReadFull(s, buf)
-		offset -= length
+		_, _ = io.ReadFull(s, buf) //读取并丢弃
+		offset -= length           //本次读取了length长度
 	}
 	return offset, nil
 }

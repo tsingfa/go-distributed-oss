@@ -8,10 +8,10 @@ import (
 	"go-distributed-oss/apiServer/heartbeat"
 	"go-distributed-oss/apiServer/locate"
 	"go-distributed-oss/src/lib/es"
+	"go-distributed-oss/src/lib/mylogger"
 	"go-distributed-oss/src/lib/rs"
 	"go-distributed-oss/src/lib/utils"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,14 +21,14 @@ import (
 func put(w http.ResponseWriter, r *http.Request) {
 	hash := utils.GetHashFromHeader(r.Header) //获取http头部中的hash值（客户端提供的哈希）
 	if hash == "" {
-		log.Println("missing object hash in digest header...")
+		mylogger.L().Println("missing object hash in digest header...")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	size := utils.GetSizeFromHeader(r.Header) //（临时）对象大小
 	code, err := storeObject(r.Body, hash, size)
 	if err != nil { //服务器错误 或 数据校验失败
-		log.Println(err)
+		mylogger.L().Println(err)
 		w.WriteHeader(code) //返回HTTP错误码
 		return
 	}
@@ -39,7 +39,7 @@ func put(w http.ResponseWriter, r *http.Request) {
 	name := strings.Split(r.URL.EscapedPath(), "/")[2]
 	err = es.AddVersion(name, hash, size) //更新版本记录（单例检查跳过 或者 缓存提交成功）
 	if err != nil {
-		log.Println("addVersion error:", err)
+		mylogger.L().Println("addVersion error:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -53,7 +53,7 @@ func storeObject(r io.Reader, hash string, size int64) (int, error) {
 	}
 	stream, err := putStream(url.PathEscape(hash), size) //指定对象的写入流（随机分配了数据结点）
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		return http.StatusInternalServerError, err
 	}
 	reader := io.TeeReader(r, stream) //对r的读取，都会写入stream（stream实现了io.Writer接口）
@@ -72,7 +72,7 @@ func storeObject(r io.Reader, hash string, size int64) (int, error) {
 // feat: 随机选择【一组】数据节点构建写入流，写入分片文件。
 func putStream(hash string, size int64) (*rs.RSPutStream, error) {
 	servers := heartbeat.ChooseRandomDataServer(rs.AllShards, nil) //随机选择的数据服务结点结果
-	log.Println("choose servers:", servers)
+	mylogger.L().Println("choose servers:", servers)
 	if len(servers) != rs.AllShards {
 		return nil, fmt.Errorf("cannot find enough dataServer")
 	}

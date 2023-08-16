@@ -2,8 +2,8 @@ package objectstream
 
 import (
 	"fmt"
+	"go-distributed-oss/src/lib/mylogger"
 	"io"
-	"log"
 	"net/http"
 )
 
@@ -42,7 +42,7 @@ func (w *PutStream) Write(p []byte) (n int, err error) {
 func (w *PutStream) Close() error {
 	err := w.writer.Close()
 	if err != nil {
-		log.Println(err)
+		mylogger.L().Println(err)
 		return err
 	}
 	return <-w.ch

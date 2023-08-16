@@ -11,7 +11,7 @@ import (
 
 // Locate 指定对象文件名，查找并返回所在的数据结点地址。
 //
-// feat1: 在新增元数据功能后，入参改用哈希值定位（关联到数据服务的Locate函数）。
+// feat1: 在新增元数据功能后，入参改用对象hash值定位（关联到数据服务的Locate函数）。
 //
 // feat2: 新增数据冗余功能（RS纠错分片），查找并返回各分片id及其所属数据节点地址。
 func Locate(object string) map[int]string {
@@ -35,7 +35,8 @@ func Locate(object string) map[int]string {
 	return locateInfo
 }
 
-// Exist 指定的对象文件在各数据服务结点中是否存在
+// Exist 指定的对象文件(hash)在各数据服务结点中是否存在。
+//
 // feat: 实现数据冗余（RS分片）后，数据分散在若干个节点中，
 // 则需检查各节点中的分片能否组成一个完整对象。
 func Exist(object string) bool {

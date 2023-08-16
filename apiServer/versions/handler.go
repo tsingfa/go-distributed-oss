@@ -3,7 +3,7 @@ package versions
 import (
 	"encoding/json"
 	"go-distributed-oss/src/lib/es"
-	"log"
+	"go-distributed-oss/src/lib/mylogger"
 	"net/http"
 	"strings"
 )
@@ -21,7 +21,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	for {
 		metas, err := es.SearchAllVersions(name, from, size) //返回元数据数组
 		if err != nil {
-			log.Println(err)
+			mylogger.L().Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

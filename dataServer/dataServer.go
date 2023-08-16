@@ -6,7 +6,7 @@ import (
 	"go-distributed-oss/dataServer/locate"
 	"go-distributed-oss/dataServer/objects"
 	"go-distributed-oss/dataServer/temp"
-	"log"
+	"go-distributed-oss/src/lib/mylogger"
 	"net/http"
 	"os"
 )
@@ -21,5 +21,5 @@ func main() {
 	})
 	http.HandleFunc("/objects/", objects.Handler)
 	http.HandleFunc("/temp/", temp.Handler)
-	log.Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
+	mylogger.L().Fatal(http.ListenAndServe(os.Getenv("LISTEN_ADDRESS"), nil))
 }
