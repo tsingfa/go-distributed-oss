@@ -58,8 +58,8 @@ func get(w http.ResponseWriter, r *http.Request) {
 // size参数是由于RS码的实现要求每一个数据片的长度完全一样，若编码时对象长度无法被4整除，
 // 函数会对最后一个数据片进行填充。而在解码时，需根据对象的准确长度，防止填充数据被当做原始数据返回
 func GetStream(hash string, size int64) (*rs.RSGetStream, error) {
-	locateInfo := locate.Locate(hash)     //查找指定文件对象所分布的数据结点（含数据+纠错分片）
-	if len(locateInfo) == rs.DataShards { //若分片数量不足以拼成一个完整对象
+	locateInfo := locate.Locate(hash)    //查找指定文件对象所分布的数据结点（含数据+纠错分片）
+	if len(locateInfo) < rs.DataShards { //若分片数量不足以拼成一个完整对象
 		return nil, fmt.Errorf("object %s locate fail，need %d severs,but result %v", hash, rs.DataShards, locateInfo)
 	}
 	dataSevers := make([]string, 0)      //接收【恢复分片】的节点
