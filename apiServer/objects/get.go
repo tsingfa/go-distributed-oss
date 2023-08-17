@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"compress/gzip"
 	"fmt"
 	"go-distributed-oss/apiServer/heartbeat"
 	"go-distributed-oss/apiServer/locate"
@@ -51,11 +52,26 @@ func get(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-range", fmt.Sprintf("bytes %d-%d/%d", offset, meta.Size-1, meta.Size)) //响应头部
 		w.WriteHeader(http.StatusPartialContent)
 	}
-	_, err = io.Copy(w, stream) //将读取到的数据复制到写入流writer
-	if err != nil {             //RS解码过程中发生错误
-		mylogger.L().Println(err)
-		w.WriteHeader(http.StatusNotFound)
-		return
+	acceptGzip := false
+	encoding := r.Header["Accept-Encoding"]
+	for i := range encoding { //遍历客户可以接受的压缩编码
+		if encoding[i] == "gzip" { //如果有gzip，说明客户可以接受
+			acceptGzip = true
+			break
+		}
+	}
+	if acceptGzip {
+		w.Header().Set("content-encoding", "gzip") //响应头部
+		w2 := gzip.NewWriter(w)
+		_, _ = io.Copy(w2, stream) //数据写入w2，w2压缩后写入w
+		_ = w2.Close()             //通过关闭 w2 来触发压缩，并将压缩后的数据写入到 w 中
+	} else {
+		_, err = io.Copy(w, stream) //将读取到的数据复制到写入流writer
+		if err != nil {             //RS解码过程中发生错误
+			mylogger.L().Println(err)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 	}
 	stream.Close() //用于在流关闭时，将临时对象转正
 }

@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"compress/gzip"
 	"crypto/sha256"
 	"encoding/base64"
 	"go-distributed-oss/dataServer/locate"
@@ -72,9 +73,19 @@ func getFile(name string) string {
 
 // sendFile 将指定路径的文件传输到指定写入流中
 func sendFile(w io.Writer, filepath string) {
-	file, _ := os.Open(filepath)
+	file, err := os.Open(filepath) //在实现数据压缩之后，客户端默认压缩存储，故file为gzip文件
+	if err != nil {
+		mylogger.L().Println(err)
+		return
+	}
 	defer func(f *os.File) {
 		_ = f.Close()
 	}(file)
-	_, _ = io.Copy(w, file)
+	unGzipStream, err := gzip.NewReader(file) //将file解压后读取到unGzipStream
+	if err != nil {                           //解压失败
+		mylogger.L().Println(err)
+		return
+	}
+	_, _ = io.Copy(w, unGzipStream) //将解压后的数据返回给接口服务（由接口服务判断是否要再次压缩返回给客户端）
+	_ = unGzipStream.Close()
 }

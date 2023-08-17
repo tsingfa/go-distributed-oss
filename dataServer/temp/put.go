@@ -4,9 +4,11 @@
 package temp
 
 import (
+	"compress/gzip"
 	"go-distributed-oss/dataServer/locate"
 	"go-distributed-oss/src/lib/mylogger"
 	"go-distributed-oss/src/lib/utils"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,10 +55,17 @@ func put(w http.ResponseWriter, r *http.Request) {
 // commitTempObject 将临时对象（分片）转正
 func commitTempObject(datFile string, tempinfo *tempInfo) {
 	file, _ := os.Open(datFile)
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(file)
 	d := url.PathEscape(utils.CalculateHash(file)) //得到分片hash
-	_ = file.Close()
-	_ = os.Rename(datFile, os.Getenv("STORAGE_ROOT")+"/objects/"+tempinfo.Name+"."+d) //重命名为："对象hash.分片id.分片hash"
-	locate.Add(tempinfo.hash(), tempinfo.id())                                        //加入定位缓存（对象hash--分片id）
+	_, _ = file.Seek(0, io.SeekStart)
+	w, _ := os.Create(os.Getenv("STORAGE_ROOT") + "/objects/" + tempinfo.Name + "." + d) //重命名为："对象hash.分片id.分片hash"
+	w2 := gzip.NewWriter(w)
+	_, _ = io.Copy(w2, file) //上传时将file写入w2，压缩后写入落盘文件w（实现压缩上传）
+	_ = w2.Close()
+	os.Remove(datFile)
+	locate.Add(tempinfo.hash(), tempinfo.id()) //加入定位缓存（对象hash--分片id）
 }
 
 // hash 获取对象hash

@@ -332,4 +332,133 @@ curl 10.29.2.1:12345/objects/test666 -H "range: bytes=32000-" > /tmp/output2
 ```
 
 
+## 7 数据压缩
 
+```shell
+#生成一个100MB的测试文件，内容全为0
+dd if=/dev/zero of=/tmp/file7 bs=1M count=100
+记录了100+0 的读入
+记录了100+0 的写出
+104857600 bytes (105 MB, 100 MiB) copied, 0.0897956 s, 1.2 GB/s
+
+#计算hash值
+openssl dgst -sha256 -binary /tmp/file7|base64
+IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=
+
+```
+```shell
+#上传为test7对象
+curl -v 10.29.2.1:12345/objects/test7 -XPUT --data-binary @/tmp/file7 -H "Digest: SHA-256=IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4="
+
+
+*   Trying 10.29.2.1:12345...
+* Connected to 10.29.2.1 (10.29.2.1) port 12345 (#0)
+> PUT /objects/test7 HTTP/1.1
+> Host: 10.29.2.1:12345
+> User-Agent: curl/7.87.0
+> Accept: */*
+> Digest: SHA-256=IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=
+> Content-Length: 104857600
+> Content-Type: application/x-www-form-urlencoded
+> Expect: 100-continue
+> 
+* Done waiting for 100-continue
+[2023-08-17 07:14:14 10.29.2.1:12345:go-distributed-oss/apiServer/objects.putStream(put.go):75]
+choose servers:[10.29.1.4:12345 10.29.1.6:12345 10.29.1.5:12345 10.29.1.2:12345 10.29.1.3:12345 10.29.1.1:12345]
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 100 Continue
+* We are completely uploaded and fine
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Date: Wed, 16 Aug 2023 23:14:23 GMT
+< Content-Length: 0
+< 
+* Connection #0 to host 10.29.2.1 left intact
+
+#用ls命令查看分片对象大小
+# 25514字节（25MB）无压缩的情况下的分片大小
+ls -ltr /tmp/?/objects/IE*
+
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/4/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.0.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/6/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.1.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/5/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.2.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/2/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.3.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/3/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.4.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 '/tmp/1/objects/IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.5.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+
+```
+
+```shell
+#下载test7对象并对比数据
+curl -v 10.29.2.1:12345/objects/test7 -o /tmp/output
+
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 10.29.2.1:12345...
+* Connected to 10.29.2.1 (10.29.2.1) port 12345 (#0)
+> GET /objects/test7 HTTP/1.1
+> Host: 10.29.2.1:12345
+> User-Agent: curl/7.87.0
+> Accept: */*
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Date: Wed, 16 Aug 2023 23:22:00 GMT
+< Content-Type: application/octet-stream
+< Transfer-Encoding: chunked
+< 
+{ [32013 bytes data]
+100  100M    0  100M    0     0   121M      0 --:--:-- --:--:-- --:--:--  121M
+* Connection #0 to host 10.29.2.1 left intact
+
+
+#下载test7对象输出（100MB）
+ls -ltr  /tmp/output
+
+-rw-rw-r-- 1 tsingfa tsingfa 104857600 8月  17 07:22 /tmp/output
+
+#比较输出文件与原文件
+diff -s /tmp/output /tmp/file7
+
+檔案 /tmp/output 和 /tmp/file7 相同
+
+```
+
+```shell
+#以gzip压缩的方式下载数据（大小仅98k）
+curl -v 10.29.2.1:12345/objects/test7 -H "Accept-Encoding: gzip" -o /tmp/output2.gz
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 10.29.2.1:12345...
+* Connected to 10.29.2.1 (10.29.2.1) port 12345 (#0)
+> GET /objects/test7 HTTP/1.1
+> Host: 10.29.2.1:12345
+> User-Agent: curl/7.87.0
+> Accept: */*
+> Accept-Encoding: gzip
+> 
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Content-Encoding: gzip
+< Date: Thu, 17 Aug 2023 00:13:57 GMT
+< Transfer-Encoding: chunked
+< 
+{ [3988 bytes data]
+100   99k    0   99k    0     0    98k      0 --:--:--  0:00:01 --:--:--   98k
+* Connection #0 to host 10.29.2.1 left intact
+
+
+#解压并对比数据
+gunzip /tmp/output2.gz
+
+gzip: /tmp/output2 already exists; do you wish to overwrite (y or n)? y
+
+----
+diff -s /tmp/output2 /tmp/file7
+
+檔案 /tmp/output2 和 /tmp/file7 相同
+
+
+```
