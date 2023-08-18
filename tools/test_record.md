@@ -462,3 +462,256 @@ diff -s /tmp/output2 /tmp/file7
 
 
 ```
+
+
+
+## 8 数据维护
+
+### 8.1 上传对象，等待处理
+
+```sh
+#先给test8对象上传6个版本
+echo -n "this is object test8 version 1"|openssl dgst -sha256 -binary|base64
+2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 1" -H "Digest: SHA-256=2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE="
+------
+echo -n "this is object test8 version 2-6"|openssl dgst -sha256 -binary|base64
+66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 2-6" -H "Digest: SHA-256=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 2-6" -H "Digest: SHA-256=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 2-6" -H "Digest: SHA-256=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 2-6" -H "Digest: SHA-256=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="
+
+curl 10.29.2.1:12345/objects/test8 -XPUT -d"this is object test8 version 2-6" -H "Digest: SHA-256=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="
+------
+#查看test8的当前版本
+curl 10.29.2.1:12345/versions/test8
+{"Name":"test8","Version":1,"Size":30,"Hash":"2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE="}
+{"Name":"test8","Version":2,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":3,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":4,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":5,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":6,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+
+#用ls查看磁盘上的对象文件
+ls -l /tmp/?/objects
+/tmp/1/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.1.2eKLvcHfGvzIi+X5HFzgiCJyqjXV9%2F2U08FC6Srcslg='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.5.ih70CdjuiOerAQJiRj5Nnha6at+Rz9A6GKemrqmIDD4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.5.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.3.ZIF4Fxs1HfmFMNWTq2vPOgPokMua%2FoAqpnamDeor23M='
+
+/tmp/2/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.2.WGDnaf+GobSSS3wODa8r0IAgqC1ngM3KTGOklo12P%2Fw='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.0.xPZ9Cf8mShrJsL32FnbSVcayc9W5Y05clRo3GOkLyG0='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.3.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.2.M5NzdMLTwDMVf62PgH858k8877WH0AM4N1UaD%2FSMA7Q='
+
+/tmp/3/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.5.ftcCG2hNzSmXh+RRIUPQXg58Kr8zEl9mzZZ6gmrSfH8='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.4.lAxEeRg2CNM7HWbwEUxkrorkqPO9pGI4syLdnOJ6lMI='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.4.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.0.6HkuURJ+sFWKN7xy+ryhUz2NL5ttEXxDvEtFjZ2jaWI='
+
+/tmp/4/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.0.xPZ9Cf8mShrJsL32FnbSVcayc9W5Y05clRo3GOkLyG0='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.1.2eKLvcHfGvzIi+X5HFzgiCJyqjXV9%2F2U08FC6Srcslg='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.0.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.4.reIFPA%2FP1XLjMiJf3esL65cuXHRMbnAZBkv5y+Nlgzo='
+
+/tmp/5/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.3.qBIQp3Kid8QEkuMld0xIc1494hqIkPLdKzEGl4MBchk='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.3.k7Z7BMDLAqtsm+AnQLO0dwSdXat1CnaUgRyE0f9ZgZ0='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.2.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.5.eBclQDufpQWd1sdapeomN0HG9E4haX74mnjrTG1Ns6I='
+
+/tmp/6/objects:
+总用量 64
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:32 '2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=.4.Bg1hMBtSp3uHCiIoNfPdU+UcCtWIe3j8ZdSdM0DUMQ0='
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.2.WGDnaf+GobSSS3wODa8r0IAgqC1ngM3KTGOklo12P%2Fw='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.1.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.1.rsSA6IGLPpvHl6pkE5a92Rk6uD4m+WkkzOboOcgsBVI='
+
+```
+
+
+
+### 8.2 测试deleteOldMetadata工具
+
+```shell
+#配置相关服务
+export RABBITMQ_SERVER=amqp://test:test@localhost:5672
+ export ES_SERVER=localhost:9200
+ 
+ #运行deleteOldMetadata工具
+ go run ../maintenance/deleteOldMetadata/deleteOldMetadata.go
+ 
+ #再次查看test8版本
+ curl 10.29.2.1:12345/versions/test8
+
+{"Name":"test8","Version":2,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":3,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":4,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":5,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+{"Name":"test8","Version":6,"Size":32,"Hash":"66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA="}
+
+#这里成功删除的关键是：es里的结构体能够成功被json解析
+#注意将结构体的各个字段绑定好对应json
+[2023-08-17 23:22:19 :go-distributed-oss/src/lib/es.SearchVersionStatus(es.go):202]
+ar:es.aggregateResult{Aggregations:struct { GroupByName struct { Buckets []es.Bucket "json:\"buckets\"" } "json:\"group_by_name\"" }{GroupByName:struct { Buckets []es.Bucket "json:\"buckets\"" }{Buckets:[]es.Bucket{es.Bucket{Key:"test8", DocCount:6, MinVersion:struct { Value float32 "json:\"value\"" }{Value:1}}}}}}
+```
+
+
+
+### 8.3  测试deleteOrphanObject工具：
+
+```sh
+#test8-version1的元信息被删除，该对象现在为无引用的对象
+#调用deleteOrphanObject工具清除
+#使用delByAPI函数，只需调用一次
+ STORAGE_ROOT=/tmp/? LISTEN_ADDRESS=10.29.2.1:12345 go run ../maintenance/deleteOrphanObject/deleteOrphanObject.go
+
+> return:
+[2023-08-18 01:26:13 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:13 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+[2023-08-18 01:26:13 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:14 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+[2023-08-18 01:26:14 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:15 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+[2023-08-18 01:26:15 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:16 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+[2023-08-18 01:26:16 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:17 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+[2023-08-18 01:26:17 10.29.2.1:12345:main.delByAPI(deleteOrphanObject.go):47]
+delete: 2IJQkIth94IVsnPQMrsNxz1oqfrsPo0E2ZmZfJLDZnE=
+2023/08/18 01:26:19 http: superfluous response.WriteHeader call from go-distributed-oss/apiServer/objects.Handler (handler.go:34)
+
+#查看目录变化
+ls -l /tmp/?/objects
+
+> return:
+/tmp/1/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.5.ih70CdjuiOerAQJiRj5Nnha6at+Rz9A6GKemrqmIDD4='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.5.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.3.ZIF4Fxs1HfmFMNWTq2vPOgPokMua%2FoAqpnamDeor23M='
+
+/tmp/2/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.0.xPZ9Cf8mShrJsL32FnbSVcayc9W5Y05clRo3GOkLyG0='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.3.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.2.M5NzdMLTwDMVf62PgH858k8877WH0AM4N1UaD%2FSMA7Q='
+
+/tmp/3/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.4.lAxEeRg2CNM7HWbwEUxkrorkqPO9pGI4syLdnOJ6lMI='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.4.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.0.6HkuURJ+sFWKN7xy+ryhUz2NL5ttEXxDvEtFjZ2jaWI='
+
+/tmp/4/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.1.2eKLvcHfGvzIi+X5HFzgiCJyqjXV9%2F2U08FC6Srcslg='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.0.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.4.reIFPA%2FP1XLjMiJf3esL65cuXHRMbnAZBkv5y+Nlgzo='
+
+/tmp/5/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.3.k7Z7BMDLAqtsm+AnQLO0dwSdXat1CnaUgRyE0f9ZgZ0='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.2.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.5.eBclQDufpQWd1sdapeomN0HG9E4haX74mnjrTG1Ns6I='
+
+/tmp/6/objects:
+总用量 60
+-rw-rw-r-- 1 tsingfa tsingfa    32 8月  17 22:33 '66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.2.WGDnaf+GobSSS3wODa8r0IAgqC1ngM3KTGOklo12P%2Fw='
+-rw-rw-r-- 1 tsingfa tsingfa 25514 8月  17 07:14 'IEkqTQ2E+L6xdn9mFiKfhdRMKCe2S9v7Jg7hL6EQng4=.1.OUw0XwsMY+5lJiemLu0GkkTTXE1RNOTwfU6rtRr9pH4='
+-rw-rw-r-- 1 tsingfa tsingfa 25000 8月  16 13:55 'soudSwVx4hcqK%2FG1Gkqhs1U%2FEJ87GfsIj+L3voEvjwo=.1.rsSA6IGLPpvHl6pkE5a92Rk6uD4m+WkkzOboOcgsBVI='
+
+```
+
+
+
+### 8.4 测试objectScanner工具
+
+定期执行以检查并修复所有对象
+
+```sh
+# 模拟分片丢失
+rm /tmp/1/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=*
+
+# 模拟分片损坏（数据变化）
+echo some_garbage > /tmp/2/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.*
+
+#执行检查并修复
+ STORAGE_ROOT=/tmp/3 go run ../maintenance/objectScanner/objectScanner.go
+ 
+ > return :
+[2023-08-18 16:54:21 :main.verify(objectScanner.go):24]
+verify:66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=
+[2023-08-18 16:54:21 10.29.1.2:12345:go-distributed-oss/dataServer/objects.sendFile(get.go):86]
+gzip: invalid header
+[2023-08-18 16:54:21 10.29.1.2:12345:go-distributed-oss/dataServer/objects.getFile(get.go):66]
+object hash mismatch, remove/tmp/2/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.1.2eKLvcHfGvzIi+X5HFzgiCJyqjXV9%2F2U08FC6Srcslg=
+[2023-08-18 16:54:21 10.29.1.1:12345:go-distributed-oss/dataServer/objects.getFile(get.go):57]
+object shard 66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.2 not found in 10.29.1.1:12345, just found []
+
+#再次执行检查
+STORAGE_ROOT=/tmp/3 go run ../maintenance/objectScanner/objectScanner.go
+
+> return :
+[2023-08-18 16:55:50 :main.verify(objectScanner.go):24]
+verify:66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=
+```
+
+
+
+```sh
+# 分片丢失/损坏过多（无法恢复）
+rm /tmp/1/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=*
+echo some_garbage > /tmp/2/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.*
+echo some_garbage > /tmp/3/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.*
+
+> return :
+[2023-08-18 16:57:17 :main.verify(objectScanner.go):24]
+verify:66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=
+[2023-08-18 16:57:17 10.29.1.3:12345:go-distributed-oss/dataServer/objects.sendFile(get.go):86]
+gzip: invalid header		# 数据异常，dataSever解压时未通过校验
+[2023-08-18 16:57:17 10.29.1.3:12345:go-distributed-oss/dataServer/objects.getFile(get.go):66]
+object hash mismatch, remove/tmp/3/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.0.xPZ9Cf8mShrJsL32FnbSVcayc9W5Y05clRo3GOkLyG0=
+[2023-08-18 16:57:17 10.29.1.2:12345:go-distributed-oss/dataServer/objects.sendFile(get.go):86]
+gzip: invalid header		# 数据异常，dataSever解压时未通过校验
+[2023-08-18 16:57:17 10.29.1.2:12345:go-distributed-oss/dataServer/objects.getFile(get.go):66]
+object hash mismatch, remove/tmp/2/objects/66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.1.2eKLvcHfGvzIi+X5HFzgiCJyqjXV9%2F2U08FC6Srcslg=
+[2023-08-18 16:57:17 10.29.1.1:12345:go-distributed-oss/dataServer/objects.getFile(get.go):57]
+object shard 66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=.2 not found in 10.29.1.1:12345, just found []	# 分片丢失
+[2023-08-18 16:57:17 :main.verify(objectScanner.go):37]
+object hash mismatch,calculated=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=,requested=66WuRH0s0albWDZ9nTmjFo9JIqTTXmB6EiRkhTh1zeA=
+[2023-08-18 16:57:17 10.29.1.3:12345:go-distributed-oss/dataServer/temp.put(put.go):48]
+actual size mismatch,expect:8,but actual:0	#尝试恢复，但是恢复失败
+[2023-08-18 16:57:17 10.29.1.2:12345:go-distributed-oss/dataServer/temp.put(put.go):48]
+actual size mismatch,expect:8,but actual:0
+[2023-08-18 16:57:17 10.29.1.1:12345:go-distributed-oss/dataServer/temp.put(put.go):48]
+actual size mismatch,expect:8,but actual:0
+```
+
+
+
