@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// del 缓存删除（转正失败，清除临时信息和临时分片）
 func del(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.Split(r.URL.EscapedPath(), "/")[2]
 	infoFile := os.Getenv("STORAGE_ROOT") + "/temp/" + uuid

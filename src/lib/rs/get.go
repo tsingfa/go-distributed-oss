@@ -12,7 +12,7 @@ type RSGetStream struct {
 
 // NewRSGetStream
 //
-// locateInfo是个哈希表，输入时仅记录分片完好的节点，丢失的分片对应节点记录为空。
+// locateInfo是个哈希表，分片完好的节有记录，分片丢失节点记录为空。
 //
 // dataSevers是随机选择出来用于存放修复分片的数据节点，若无丢失、无需修复，则为空切片。
 func NewRSGetStream(locateInfo map[int]string, dataServers []string, hash string, size int64) (*RSGetStream, error) {
@@ -23,7 +23,7 @@ func NewRSGetStream(locateInfo map[int]string, dataServers []string, hash string
 	for i := 0; i < AllShards; i++ {
 		server := locateInfo[i] //查看每个分片id对应的server
 		if server == "" {       //若某分片id对应的server为空 --> 该分片丢失
-			locateInfo[i] = dataServers[0]
+			locateInfo[i] = dataServers[0] //记录分片丢失的dataServer（队头出队，key为数字）
 			dataServers = dataServers[1:]
 			continue
 		}
@@ -48,7 +48,7 @@ func NewRSGetStream(locateInfo map[int]string, dataServers []string, hash string
 	//readers和writers数组二者互补，对于某个分片id，
 	//要么readers中存在对应的读取流 --> 分片存在且未损坏，可读取 ；
 	//要么writers中存在相应的写入流 --> 分片不存在或因损坏而被清除，待写入修复分片
-	dec := NewDecoder(readers, writers, size)
+	dec := NewDecoder(readers, writers, size) //decoder实现了io.Reader，在读取时会调用Read方法（内部含有分片的检查修复）
 	return &RSGetStream{dec}, nil
 }
 

@@ -3,6 +3,7 @@ package es
 import (
 	"encoding/json"
 	"fmt"
+	"go-distributed-oss/src/lib/mylogger"
 	"io"
 	"log"
 	"net/http"
@@ -138,30 +139,41 @@ func SearchAllVersions(name string, from, size int) ([]Metadata, error) {
 	return metas, nil
 }
 
+// DelMetadata 删除指定name_version的记录
 func DelMetadata(name string, version int) {
 	client := http.Client{}
 	urlStr := fmt.Sprintf("http://%s/metadata/_doc/%s_%d",
 		os.Getenv("ES_SERVER"), name, version)
 	request, _ := http.NewRequest("DELETE", urlStr, nil)
-	_, _ = client.Do(request)
+	response, err := client.Do(request)
+	defer response.Body.Close()
+	if err != nil {
+		mylogger.L().Println(err)
+	}
+	// 读取响应正文
+	responseBody, _ := io.ReadAll(response.Body)
+	mylogger.L().Println("Response Body:", string(responseBody))
 }
 
 type Bucket struct {
-	Key        string
-	DocCount   int
+	Key        string `json:"key"`       //对象名
+	DocCount   int    `json:"doc_count"` //对象现有版本数
 	MinVersion struct {
-		Value float32
-	}
+		Value float32 `json:"value"` //当前最小版本号
+	} `json:"min_version"`
 }
 
 type aggregateResult struct {
 	Aggregations struct {
 		GroupByName struct {
-			Buckets []Bucket
-		}
-	}
+			Buckets []Bucket `json:"buckets"`
+		} `json:"group_by_name"`
+	} `json:"aggregations"`
 }
 
+// SearchVersionStatus 查询所有已达版本数量限制的对象
+//
+// minDocCount 指定需要搜索对象的最少版本数量
 func SearchVersionStatus(minDocCount int) ([]Bucket, error) {
 	client := http.Client{}
 	urlStr := fmt.Sprintf("http://%s/metadata/_search", os.Getenv("ES_SERVER"))
@@ -188,11 +200,17 @@ func SearchVersionStatus(minDocCount int) ([]Bucket, error) {
 	req.Header.Set("Content-Type", "application/json") // 添加Content-Type头部
 	resp, err := client.Do(req)
 	if err != nil {
+		mylogger.L().Println(err)
 		return nil, err
 	}
 	b, _ := io.ReadAll(resp.Body)
 	var ar aggregateResult
-	_ = json.Unmarshal(b, &ar)
+	err = json.Unmarshal(b, &ar)
+	//mylogger.L().Printf("ar:%#v\n", ar)
+	if err != nil {
+		mylogger.L().Println(err)
+		return nil, err
+	}
 	return ar.Aggregations.GroupByName.Buckets, nil
 }
 

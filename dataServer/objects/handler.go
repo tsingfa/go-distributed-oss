@@ -19,5 +19,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		get(w, r)
 		return
 	}
+	if m == http.MethodDelete {
+		del(w, r)
+	}
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }

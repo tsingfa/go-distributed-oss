@@ -54,13 +54,13 @@ func getFile(hash string) string {
 func getFile(name string) string {
 	filenamePaths, _ := filepath.Glob(os.Getenv("STORAGE_ROOT") + "/objects/" + name + ".*") //文件名匹配
 	if len(filenamePaths) != 1 {
-		mylogger.L().Printf("filenamePaths not found,name %s, found %s\n", name, filenamePaths)
+		mylogger.L().Printf("object shard %s not found in %s, just found %s\n", name, os.Getenv("LISTEN_ADDRESS"), filenamePaths)
 		return ""
 	}
 	filenamePath := filenamePaths[0] //分片的带路径文件名
 	h := sha256.New()
-	sendFile(h, filenamePath)
-	d := url.PathEscape(base64.StdEncoding.EncodeToString(h.Sum(nil))) //真实的分片hash
+	sendFile(h, filenamePath)                                          //这里传输的是解压的文件流
+	d := url.PathEscape(base64.StdEncoding.EncodeToString(h.Sum(nil))) //真实的分片hash（解压后的）
 	hash := strings.Split(filenamePath, ".")[2]                        //文件名中标记的分片hash
 	if d != hash {                                                     //数据校验不通过 --> 内容已经损坏
 		mylogger.L().Println("object hash mismatch, remove", filenamePath)
@@ -71,7 +71,7 @@ func getFile(name string) string {
 	return filenamePath
 }
 
-// sendFile 将指定路径的文件传输到指定写入流中
+// sendFile 将指定路径的文件（解压后）传输到指定写入流中
 func sendFile(w io.Writer, filepath string) {
 	file, err := os.Open(filepath) //在实现数据压缩之后，客户端默认压缩存储，故file为gzip文件
 	if err != nil {
